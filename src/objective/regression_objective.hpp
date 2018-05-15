@@ -499,14 +499,16 @@ public:
       if (weights_ == nullptr) {
 #pragma omp parallel for schedule(static)
         for (data_size_t i = 0; i < num_data_; ++i) {
-          gradients[i] = static_cast<score_t>(-label_[i]);
-          hessians[i] = static_cast<score_t>(std::exp(score[i] + max_delta_step_));
+          gradients[i] = static_cast<score_t>(label_[i]);
+//          gradients[i] = static_cast<score_t>(std::exp(score[i]) - label_[i]);
+         hessians[i] = static_cast<score_t>(std::exp(score[i] + max_delta_step_));
         }
       } else {
 #pragma omp parallel for schedule(static)
         for (data_size_t i = 0; i < num_data_; ++i) {
-          gradients[i] = static_cast<score_t>((-label_[i]) * weights_[i]);
-          hessians[i] = static_cast<score_t>(std::exp(score[i] + max_delta_step_) * weights_[i]);
+          gradients[i] = static_cast<score_t>((label_[i]) * weights_[i]);
+//          gradients[i] = static_cast<score_t>((std::exp(score[i]) - label_[i]) * weights_[i]);
+         hessians[i] = static_cast<score_t>(std::exp(score[i] + max_delta_step_) * weights_[i]);
         }
       }
     }

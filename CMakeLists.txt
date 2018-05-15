@@ -205,7 +205,7 @@ endif()
 
 #install(DIRECTORY ${LightGBM_HEADER_DIR}/LightGBM DESTINATION ${CMAKE_INSTALL_PREFIX}/include)
 
-install(TARGETS lightgbm DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/examples/binary_classification)
-install(TARGETS lightgbm DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/examples/multiclass_classification)
-install(TARGETS lightgbm DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/examples/regression)
+#install(TARGETS lightgbm DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/examples/binary_classification)
+#install(TARGETS lightgbm DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/examples/multiclass_classification)
+#install(TARGETS lightgbm DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/examples/regression)
 install(TARGETS lightgbm DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/examples/property_inspection_prediction)
