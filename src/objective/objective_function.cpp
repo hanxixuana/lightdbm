@@ -34,8 +34,6 @@ ObjectiveFunction* ObjectiveFunction::CreateObjectiveFunction(const std::string&
     return new RegressionPoissonDeltaLoss(config);
   } else if (type == std::string("binary")) {
     return new BinaryLogloss(config);
-  } else if (type == std::string("db_bernoulli")) {
-    return new DeltaBoostingBernoulliLoss(config);
   } else if (type == std::string("lambdarank")) {
     return new LambdarankNDCG(config);
   } else if (type == std::string("multiclass") || type == std::string("softmax")) {

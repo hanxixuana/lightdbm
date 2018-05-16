@@ -49,16 +49,20 @@ if __name__ == '__main__':
     except Exception:
         raise Exception('Cannot read %s.' % file_name)
 
-    train_indices, train_losses = get_metrics(lines, 'training')
-    valid_indices, valid_losses = get_metrics(lines, 'valid_1')
+    train_indices, train_metrics = get_metrics(lines, 'training')
+    valid_indices, valid_metrics = get_metrics(lines, 'valid_1')
+
+    print('%s smallest metric on valid: %f' % (file_name[:2], min(valid_metrics)))
 
     fig = plt.figure(figsize=[6, 4])
     ax = fig.add_subplot(111)
-    ax.plot(train_indices, train_losses, 'k-', linewidth=2, label='train')
-    ax.plot(valid_indices, valid_losses, 'r-', linewidth=2, label='valid')
+    ax.plot(train_indices, train_metrics, 'k-', linewidth=2, label='train')
+    ax.plot(valid_indices, valid_metrics, 'r-', linewidth=2, label='valid')
     ax.set_xlabel('Iteration')
     ax.set_ylabel('Metrics')
     ax.legend(loc='best')
+    ax.set_title(file_name[:2])
+    ax.grid()
     # fig.savefig(
     #     'pic_%s.png' % datetime.datetime.now().strftime('%Y_%m_%d_%H_%M_%S_%f')
     # )
