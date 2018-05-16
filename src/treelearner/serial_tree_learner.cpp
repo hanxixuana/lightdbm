@@ -480,6 +480,7 @@ void SerialTreeLearner::FindBestSplitsFromHistograms(const std::vector<int8_t>& 
       smaller_leaf_splits_->sum_gradients(),
       smaller_leaf_splits_->sum_hessians(),
       smaller_leaf_splits_->num_data_in_leaf(),
+      real_fidx,
       &smaller_split);
     smaller_split.feature = real_fidx;
     if (smaller_split > smaller_best[tid]) {
@@ -501,6 +502,7 @@ void SerialTreeLearner::FindBestSplitsFromHistograms(const std::vector<int8_t>& 
       larger_leaf_splits_->sum_gradients(),
       larger_leaf_splits_->sum_hessians(),
       larger_leaf_splits_->num_data_in_leaf(),
+      real_fidx,
       &larger_split);
     larger_split.feature = real_fidx;
     if (larger_split > larger_best[tid]) {

@@ -206,7 +206,10 @@ public:
    * ========================================
    */
   std::string objective_type =  kDefaultObjectiveType;
-  int min_data_in_leaf = 20;
+  std::string monotonicity = "";
+
+
+    int min_data_in_leaf = 20;
   double min_sum_hessian_in_leaf = 1e-3f;
   double lambda_l1 = 0.0f;
   double lambda_l2 = 0.0f;

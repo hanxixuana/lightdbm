@@ -396,6 +396,18 @@ void MetricConfig::Set(const std::unordered_map<std::string, std::string>& param
 
 
 void TreeConfig::Set(const std::unordered_map<std::string, std::string>& params) {
+
+
+  /*!
+   * ========================================
+   * Xixuan: Record object type in TreeConfig
+   * ========================================
+   */
+
+  GetObjectiveType(params, &objective_type);
+  GetString(params, "monotonicity", &monotonicity);
+
+
   GetInt(params, "min_data_in_leaf", &min_data_in_leaf);
   GetDouble(params, "min_sum_hessian_in_leaf", &min_sum_hessian_in_leaf);
   CHECK(min_data_in_leaf > 0);
@@ -428,17 +440,6 @@ void TreeConfig::Set(const std::unordered_map<std::string, std::string>& params)
   CHECK(cat_smooth >= 1);
   CHECK(min_data_per_group > 0);
   CHECK(max_cat_to_onehot > 0);
-
-
-  /*!
-   * ========================================
-   * Xixuan: Record object type in TreeConfig
-   * ========================================
-   */
-
-  GetObjectiveType(params, &objective_type);
-
-
 }
 
 void BoostingConfig::Set(const std::unordered_map<std::string, std::string>& params) {

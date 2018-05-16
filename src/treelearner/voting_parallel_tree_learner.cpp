@@ -290,6 +290,7 @@ void VotingParallelTreeLearner<TREELEARNER_T>::FindBestSplits() {
       this->smaller_leaf_splits_->sum_gradients(),
       this->smaller_leaf_splits_->sum_hessians(),
       this->smaller_leaf_splits_->num_data_in_leaf(),
+      real_feature_index,
       &smaller_bestsplit_per_features[feature_index]);
     smaller_bestsplit_per_features[feature_index].feature = real_feature_index;
     // only has root leaf
@@ -307,6 +308,7 @@ void VotingParallelTreeLearner<TREELEARNER_T>::FindBestSplits() {
       this->larger_leaf_splits_->sum_gradients(),
       this->larger_leaf_splits_->sum_hessians(),
       this->larger_leaf_splits_->num_data_in_leaf(),
+      real_feature_index,
       &larger_bestsplit_per_features[feature_index]);
     larger_bestsplit_per_features[feature_index].feature = real_feature_index;
     OMP_LOOP_EX_END();
@@ -391,6 +393,7 @@ void VotingParallelTreeLearner<TREELEARNER_T>::FindBestSplitsFromHistograms(cons
         smaller_leaf_splits_global_->sum_gradients(),
         smaller_leaf_splits_global_->sum_hessians(),
         GetGlobalDataCountInLeaf(smaller_leaf_splits_global_->LeafIndex()),
+        real_feature_index,
         &smaller_split);
       smaller_split.feature = real_feature_index;
       if (smaller_split > smaller_bests_per_thread[tid]) {
@@ -413,6 +416,7 @@ void VotingParallelTreeLearner<TREELEARNER_T>::FindBestSplitsFromHistograms(cons
         larger_leaf_splits_global_->sum_gradients(),
         larger_leaf_splits_global_->sum_hessians(),
         GetGlobalDataCountInLeaf(larger_leaf_splits_global_->LeafIndex()),
+        real_feature_index,
         &larger_split);
       larger_split.feature = real_feature_index;
       if (larger_split > larger_best_per_thread[tid]) {

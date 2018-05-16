@@ -5,8 +5,11 @@
 
 #include <LightGBM/utils/array_args.h>
 #include <LightGBM/dataset.h>
+#include <LightGBM/utils/log.h>
+#include <LightGBM/utils/common.h>
 
 #include <cstring>
+#include <unordered_map>
 
 namespace LightGBM
 {
@@ -46,21 +49,28 @@ public:
   */
   void Init(HistogramBinEntry* data, const FeatureMetainfo* meta, BinType bin_type) {
 
-    /*!
-     * ========================================================
-     * Xixuan: Check if we do have objective type in TreeConfig
-     * ========================================================
-     */
-//    std::cout << meta->tree_config->objective_type << std::endl;
-
     meta_ = meta;
     data_ = data;
     if (bin_type == BinType::NumericalBin) {
-      find_best_threshold_fun_ = std::bind(&FeatureHistogram::FindBestThresholdNumerical, this, std::placeholders::_1
-                                           , std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
+      find_best_threshold_fun_ = std::bind(
+              &FeatureHistogram::FindBestThresholdNumerical,
+              this,
+              std::placeholders::_1,
+              std::placeholders::_2,
+              std::placeholders::_3,
+              std::placeholders::_4,
+              std::placeholders::_5
+      );
     } else {
-      find_best_threshold_fun_ = std::bind(&FeatureHistogram::FindBestThresholdCategorical, this, std::placeholders::_1
-                                           , std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
+      find_best_threshold_fun_ = std::bind(
+              &FeatureHistogram::FindBestThresholdCategorical,
+              this,
+              std::placeholders::_1,
+              std::placeholders::_2,
+              std::placeholders::_3,
+              std::placeholders::_4,
+              std::placeholders::_5
+      );
     }
 
     /*
@@ -68,7 +78,7 @@ public:
      * Xixuan: Dynamically bind split gain and leaf output functions
      * =============================================================
      */
-    if (meta->tree_config->objective_type == std::string("poisson_db")) {
+    if (meta_->tree_config->objective_type == std::string("poisson_db")) {
 //    if (false) {
       get_leaf_split_gain_ = std::bind(
               &FeatureHistogram::GetLeafSplitGainForDeltaPoisson,
@@ -101,6 +111,23 @@ public:
       );
     }
 
+    /*!
+     * ====================================
+     * Xixuan: Read monotonicity indicators
+     * ====================================
+     */
+    if (meta_->tree_config->monotonicity.size() > 0) {
+      int fidx = 0;
+      for (auto token : Common::Split(meta_->tree_config->monotonicity.c_str(), ',')) {
+        int tmp = 0;
+        if (!Common::AtoiAndCheck(token.c_str(), &tmp)) {
+          Log::Fatal("Monotonicity should be integers like 1, 0 or -1.");
+        }
+        mono_indicators_[fidx] = static_cast<double>(tmp);
+        ++fidx;
+      }
+    }
+
   }
 
   HistogramBinEntry* RawData() {
@@ -118,15 +145,15 @@ public:
     }
   }
 
-  void FindBestThreshold(double sum_gradient, double sum_hessian, data_size_t num_data,
+  void FindBestThreshold(double sum_gradient, double sum_hessian, data_size_t num_data, int real_feature_index,
                          SplitInfo* output) {
     output->default_left = true;
     output->gain = kMinScore;
-    find_best_threshold_fun_(sum_gradient, sum_hessian + 2 * kEpsilon, num_data, output);
+    find_best_threshold_fun_(sum_gradient, sum_hessian + 2 * kEpsilon, num_data, output, real_feature_index);
   }
 
   void FindBestThresholdNumerical(double sum_gradient, double sum_hessian, data_size_t num_data,
-                                  SplitInfo* output) {
+                                  SplitInfo* output, int real_feature_index) {
 
     is_splittable_ = false;
     double gain_shift = get_leaf_split_gain_(
@@ -138,14 +165,39 @@ public:
     double min_gain_shift = gain_shift + meta_->tree_config->min_gain_to_split;
     if (meta_->num_bin > 2 && meta_->missing_type != MissingType::None) {
       if (meta_->missing_type == MissingType::Zero) {
-        FindBestThresholdSequence(sum_gradient, sum_hessian, num_data, min_gain_shift, output, -1, true, false);
-        FindBestThresholdSequence(sum_gradient, sum_hessian, num_data, min_gain_shift, output, 1, true, false);
+        FindBestThresholdSequence(
+                sum_gradient, sum_hessian,
+                num_data, min_gain_shift, output, -1,
+                true, false,
+                real_feature_index
+        );
+        FindBestThresholdSequence(
+                sum_gradient, sum_hessian,
+                num_data, min_gain_shift, output, 1,
+                true, false,
+                real_feature_index
+        );
       } else {
-        FindBestThresholdSequence(sum_gradient, sum_hessian, num_data, min_gain_shift, output, -1, false, true);
-        FindBestThresholdSequence(sum_gradient, sum_hessian, num_data, min_gain_shift, output, 1, false, true);
+        FindBestThresholdSequence(
+                sum_gradient, sum_hessian,
+                num_data, min_gain_shift, output, -1,
+                false, true,
+                real_feature_index
+        );
+        FindBestThresholdSequence(
+                sum_gradient, sum_hessian,
+                num_data, min_gain_shift, output, 1,
+                false, true,
+                real_feature_index
+        );
       }
     } else {
-      FindBestThresholdSequence(sum_gradient, sum_hessian, num_data, min_gain_shift, output, -1, false, false);
+      FindBestThresholdSequence(
+              sum_gradient, sum_hessian,
+              num_data, min_gain_shift, output, -1,
+              false, false,
+              real_feature_index
+      );
       // fix the direction error when only have 2 bins
       if (meta_->missing_type == MissingType::NaN) {
         output->default_left = false;
@@ -155,7 +207,15 @@ public:
   }
 
   void FindBestThresholdCategorical(double sum_gradient, double sum_hessian, data_size_t num_data,
-                                    SplitInfo* output) {
+                                    SplitInfo* output, int real_feature_index) {
+    /*!
+     * =======================
+     * Xixuan: Avoid warnings.
+     * =======================
+     */
+    ++real_feature_index;
+
+
     output->default_left = false;
     double best_gain = kMinScore;
     data_size_t best_left_count = 0;
@@ -421,10 +481,42 @@ public:
    return std::log(reg_sum_gradients / (sum_hessians + l2));
   }
 
+  /*!
+   * ==========================
+   * Xixuan: Check monotonicity
+   * ==========================
+   */
+  bool CheckMonotonicity(double sum_left_gradient, double sum_left_hessian,
+                         double sum_right_gradient, double sum_right_hessian,
+                         double l1, double l2,
+                         std::unordered_map<int, double> &indicators,
+                         int real_feature_index) {
+    double left_output = calculate_splitted_leaf_output_(
+            sum_left_gradient,
+            sum_left_hessian,
+            l1,
+            l2
+    );
+    double right_output = calculate_splitted_leaf_output_(
+            sum_right_gradient,
+            sum_right_hessian,
+            l1,
+            l2
+    );
+    double direction = 0.0;
+    if (indicators.find(real_feature_index) != indicators.end()) {
+      direction = indicators[real_feature_index];
+    }
+    return (right_output - left_output) * direction >= 0.0;
+  }
+
 private:
 
-  void FindBestThresholdSequence(double sum_gradient, double sum_hessian, data_size_t num_data, double min_gain_shift,
-                                 SplitInfo* output, int dir, bool skip_default_bin, bool use_na_as_missing) {
+  void FindBestThresholdSequence(double sum_gradient, double sum_hessian,
+                                 data_size_t num_data, double min_gain_shift,
+                                 SplitInfo* output, int dir,
+                                 bool skip_default_bin, bool use_na_as_missing,
+                                 int real_feature_index) {
 
     const int8_t bias = meta_->bias;
 
@@ -479,16 +571,38 @@ private:
         // gain with split is worse than without split
         if (current_gain <= min_gain_shift) continue;
 
-        // mark to is splittable
-        is_splittable_ = true;
         // better split point
         if (current_gain > best_gain) {
-          best_left_count = left_count;
-          best_sum_left_gradient = sum_left_gradient;
-          best_sum_left_hessian = sum_left_hessian;
-          // left is <= threshold, right is > threshold.  so this is t-1
-          best_threshold = static_cast<uint32_t>(t - 1 + bias);
-          best_gain = current_gain;
+
+          /*!
+           * ==========================
+           * Xixuan: Check monotonicity
+           * ==========================
+           */
+
+          bool mono_check = CheckMonotonicity(
+                  sum_left_gradient,
+                  sum_left_hessian,
+                  sum_right_gradient,
+                  sum_right_hessian,
+                  meta_->tree_config->lambda_l1,
+                  meta_->tree_config->lambda_l2,
+                  mono_indicators_,
+                  real_feature_index
+          );
+
+          if (mono_check) {
+
+            // mark to is splittable
+            is_splittable_ = true;
+
+            best_left_count = left_count;
+            best_sum_left_gradient = sum_left_gradient;
+            best_sum_left_hessian = sum_left_hessian;
+            // left is <= threshold, right is > threshold.  so this is t-1
+            best_threshold = static_cast<uint32_t>(t - 1 + bias);
+            best_gain = current_gain;
+          }
         }
       }
     } else {
@@ -547,20 +661,43 @@ private:
         // gain with split is worse than without split
         if (current_gain <= min_gain_shift) continue;
 
-        // mark to is splittable
-        is_splittable_ = true;
         // better split point
         if (current_gain > best_gain) {
-          best_left_count = left_count;
-          best_sum_left_gradient = sum_left_gradient;
-          best_sum_left_hessian = sum_left_hessian;
-          best_threshold = static_cast<uint32_t>(t + bias);
-          best_gain = current_gain;
+
+          /*!
+           * ==========================
+           * Xixuan: Check monotonicity
+           * ==========================
+           */
+
+          bool mono_check = CheckMonotonicity(
+                  sum_left_gradient,
+                  sum_left_hessian,
+                  sum_right_gradient,
+                  sum_right_hessian,
+                  meta_->tree_config->lambda_l1,
+                  meta_->tree_config->lambda_l2,
+                  mono_indicators_,
+                  real_feature_index
+          );
+
+          if (mono_check) {
+
+            // mark to is splittable
+            is_splittable_ = true;
+
+            best_left_count = left_count;
+            best_sum_left_gradient = sum_left_gradient;
+            best_sum_left_hessian = sum_left_hessian;
+            best_threshold = static_cast<uint32_t>(t + bias);
+            best_gain = current_gain;
+          }
         }
       }
     }
 
     if (is_splittable_ && best_gain > output->gain) {
+
       // update split information
       output->threshold = best_threshold;
       output->left_output = calculate_splitted_leaf_output_(
@@ -572,8 +709,8 @@ private:
       output->left_sum_gradient = best_sum_left_gradient;
       output->left_sum_hessian = best_sum_left_hessian - kEpsilon;
       output->right_output = calculate_splitted_leaf_output_(sum_gradient - best_sum_left_gradient,
-                                                         sum_hessian - best_sum_left_hessian,
-                                                         meta_->tree_config->lambda_l1, meta_->tree_config->lambda_l2);
+                                                             sum_hessian - best_sum_left_hessian,
+                                                             meta_->tree_config->lambda_l1, meta_->tree_config->lambda_l2);
       output->right_count = num_data - best_left_count;
       output->right_sum_gradient = sum_gradient - best_sum_left_gradient;
       output->right_sum_hessian = sum_hessian - best_sum_left_hessian - kEpsilon;
@@ -589,9 +726,22 @@ private:
   /*! \brief False if this histogram cannot split */
   bool is_splittable_ = true;
 
-  std::function<void(double, double, data_size_t, SplitInfo*)> find_best_threshold_fun_;
+  std::function<void(double, double, data_size_t, SplitInfo*, int)> find_best_threshold_fun_;
+
+  /*!
+   * =================================================================
+   * Xixuan: Choose split gain and leaf output according to objectives
+   * =================================================================
+   */
   std::function<double(double, double, double, double)> get_leaf_split_gain_;
   std::function<double(double, double, double, double)> calculate_splitted_leaf_output_;
+
+  /*!
+   * ====================
+   * Xixuan: Monotonicity
+   * ====================
+   */
+  std::unordered_map<int, double> mono_indicators_;
 };
 
 

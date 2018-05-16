@@ -58,10 +58,11 @@ if __name__ == '__main__':
     ax = fig.add_subplot(111)
     ax.plot(train_indices, train_metrics, 'k-', linewidth=2, label='train')
     ax.plot(valid_indices, valid_metrics, 'r-', linewidth=2, label='valid')
+    ax.plot(valid_metrics.index(min(valid_metrics)), min(valid_metrics), 'bo', linewidth=3, markersize=10)
     ax.set_xlabel('Iteration')
     ax.set_ylabel('Metrics')
     ax.legend(loc='best')
-    ax.set_title(file_name[:2])
+    ax.set_title('%s - Blue Dot: %f' % (file_name[:2], min(valid_metrics)))
     ax.grid()
     # fig.savefig(
     #     'pic_%s.png' % datetime.datetime.now().strftime('%Y_%m_%d_%H_%M_%S_%f')
