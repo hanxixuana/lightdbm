@@ -20,6 +20,23 @@ std::chrono::duration<double, std::milli> ordered_bin_time;
 
 SerialTreeLearner::SerialTreeLearner(const TreeConfig* tree_config)
   :tree_config_(tree_config) {
+
+  /*!
+   * =========================
+   * Xixuan: Check interaction
+   * =========================
+   */
+  if (tree_config->use_interaction) {
+    Log::Info("Interaction Matrix:");
+    for( const auto& item : tree_config->interaction ) {
+      std::cout << item.first << ": ";
+      for (const auto& val : item.second) {
+        std::cout << val << " ";
+      }
+      std::cout << std::endl;
+    }
+  }
+
   random_ = Random(tree_config_->feature_fraction_seed);
   #pragma omp parallel
   #pragma omp master
@@ -202,12 +219,20 @@ Tree* SerialTreeLearner::Train(const score_t* gradients, const score_t *hessians
     split_time += std::chrono::steady_clock::now() - start_time;
     #endif
     cur_depth = std::max(cur_depth, tree->leaf_depth(left_leaf));
+
+    /*!
+     * ===========================================================
+     * Xixuan: Record the feature index for interaction contraints
+     * ===========================================================
+     */
+     previous_split_real_feature_index_ = best_leaf_SplitInfo.feature;
   }
   Log::Debug("Trained a tree with leaves=%d and max_depth=%d", tree->num_leaves(), cur_depth);
   return tree.release();
 }
 
-Tree* SerialTreeLearner::FitByExistingTree(const Tree* old_tree, const score_t* gradients, const score_t *hessians) const {
+Tree* SerialTreeLearner::FitByExistingTree(const Tree* old_tree, const score_t* gradients,
+                                           const score_t *hessians) const {
   auto tree = std::unique_ptr<Tree>(new Tree(*old_tree));
   CHECK(data_partition_->num_leaves() >= tree->num_leaves());
   OMP_INIT_EX();
@@ -232,7 +257,8 @@ Tree* SerialTreeLearner::FitByExistingTree(const Tree* old_tree, const score_t* 
   return tree.release();
 }
 
-Tree* SerialTreeLearner::FitByExistingTree(const Tree* old_tree, const std::vector<int>& leaf_pred, const score_t* gradients, const score_t *hessians) {
+Tree* SerialTreeLearner::FitByExistingTree(const Tree* old_tree, const std::vector<int>& leaf_pred,
+                                           const score_t* gradients, const score_t *hessians) {
   data_partition_->ResetByLeafPred(leaf_pred, old_tree->num_leaves());
   return FitByExistingTree(old_tree, gradients, hessians);
 }
@@ -469,13 +495,26 @@ void SerialTreeLearner::FindBestSplitsFromHistograms(const std::vector<int8_t>& 
   for (int feature_index = 0; feature_index < num_features_; ++feature_index) {
     OMP_LOOP_EX_BEGIN();
     if (!is_feature_used[feature_index]) { continue; }
+    int real_fidx = train_data_->RealFeatureIndex(feature_index);
+    /*!
+     * =======================
+     * Xixuan: Use interaction
+     * =======================
+     */
+    if (tree_config_->use_interaction) {
+      if (previous_split_real_feature_index_ >= 0) {
+        auto pair = tree_config_->interaction.find(previous_split_real_feature_index_);
+        if (pair != tree_config_->interaction.end()) {
+          if (pair->second.find(real_fidx) == pair->second.end()) { continue; }
+        }
+      }
+    }
     const int tid = omp_get_thread_num();
     SplitInfo smaller_split;
     train_data_->FixHistogram(feature_index,
                               smaller_leaf_splits_->sum_gradients(), smaller_leaf_splits_->sum_hessians(),
                               smaller_leaf_splits_->num_data_in_leaf(),
                               smaller_leaf_histogram_array_[feature_index].RawData());
-    int real_fidx = train_data_->RealFeatureIndex(feature_index);
     smaller_leaf_histogram_array_[feature_index].FindBestThreshold(
       smaller_leaf_splits_->sum_gradients(),
       smaller_leaf_splits_->sum_hessians(),

@@ -101,6 +101,15 @@ protected:
   * \return The number of data in the leaf_idx leaf
   */
   inline virtual data_size_t GetGlobalDataCountInLeaf(int leaf_idx) const;
+
+
+  /*!
+     * ===========================================================
+     * Xixuan: Record the feature index for interaction contraints
+     * ===========================================================
+     */
+  int previous_split_real_feature_index_ = -1;
+
   /*! \brief number of data */
   data_size_t num_data_;
   /*! \brief number of features */

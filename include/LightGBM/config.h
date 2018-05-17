@@ -207,6 +207,8 @@ public:
    */
   std::string objective_type =  kDefaultObjectiveType;
   std::string monotonicity = "";
+  bool use_interaction = false;
+  std::unordered_map<int, std::unordered_set<int>> interaction;
 
 
     int min_data_in_leaf = 20;
@@ -486,7 +488,7 @@ struct ParameterAlias {
       "histogram_pool_size", "is_provide_training_metric", "machine_list_filename", "machines",
       "zero_as_missing", "init_score_file", "valid_init_score_file", "is_predict_contrib",
       "max_cat_threshold",  "cat_smooth", "min_data_per_group", "cat_l2", "max_cat_to_onehot",
-      "alpha", "reg_sqrt", "tweedie_variance_power"
+      "alpha", "reg_sqrt", "tweedie_variance_power", "use_interaction", "monotonicity"
     });
     std::unordered_map<std::string, std::string> tmp_map;
     for (const auto& pair : *params) {
@@ -510,7 +512,10 @@ struct ParameterAlias {
           tmp_map.emplace(alias->second, pair.first);
         }
       } else if (parameter_set.find(pair.first) == parameter_set.end()) {
-        Log::Warning("Unknown parameter: %s", pair.first.c_str());
+        int tmp = 0;
+        if (!Common::AtoiAndCheck(pair.first.c_str(), &tmp)) {
+          Log::Warning("Unknown parameter: %s", pair.first.c_str());
+        }
       }
     }
     for (const auto& pair : tmp_map) {

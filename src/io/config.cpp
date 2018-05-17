@@ -399,13 +399,30 @@ void TreeConfig::Set(const std::unordered_map<std::string, std::string>& params)
 
 
   /*!
-   * ========================================
-   * Xixuan: Record object type in TreeConfig
-   * ========================================
+   * ===================================================================
+   * Xixuan: Get object type, monotonicity and interaction in TreeConfig
+   * ===================================================================
    */
 
   GetObjectiveType(params, &objective_type);
   GetString(params, "monotonicity", &monotonicity);
+  GetBool(params, "use_interaction", &use_interaction);
+  if (use_interaction) {
+    const int max_feature_idx = 9999;
+    for (int feature_idx = 0; feature_idx <= max_feature_idx; ++feature_idx) {
+      std::string tmp_str = "";
+      GetString(params, std::to_string(feature_idx), &tmp_str);
+      if (!tmp_str.empty()) {
+        for (const auto& token : Common::Split(tmp_str.c_str(), ',')) {
+          int tmp = 0;
+          if (!Common::AtoiAndCheck(token.c_str(), &tmp)) {
+            Log::Fatal("Interaction should be integers like 0 or 1.");
+          }
+          interaction[feature_idx].insert(tmp);
+        }
+      }
+    }
+  }
 
 
   GetInt(params, "min_data_in_leaf", &min_data_in_leaf);
