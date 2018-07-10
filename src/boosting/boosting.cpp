@@ -4,6 +4,12 @@
 #include "goss.hpp"
 #include "rf.hpp"
 
+/*!
+ * Xixuan: include boosting forest
+ */
+
+#include "boosting_forest.hpp"
+
 namespace LightGBM {
 
 std::string GetBoostingTypeFromModelFile(const char* filename) {
@@ -37,6 +43,15 @@ Boosting* Boosting::CreateBoosting(const std::string& type, const char* filename
       return new GOSS();
     } else if (type == std::string("rf")) {
       return new RF();
+
+    /*!
+     * ===================================================================
+     * Xixuan: evenly dropout additive regression tree
+     * ===================================================================
+     */
+
+    } else if (type == std::string("boostingforest")) {
+      return new BF();
     } else {
       return nullptr;
     }

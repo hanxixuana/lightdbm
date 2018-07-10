@@ -42,6 +42,11 @@ Tree::Tree(int max_leaves)
   cat_boundaries_.push_back(0);
   cat_boundaries_inner_.push_back(0);
   max_depth_ = -1;
+
+  /*!
+   * Xixuan: record added bias
+   */
+   bias_ = 0.0;
 }
 
 Tree::~Tree() {
@@ -586,6 +591,12 @@ Tree::Tree(const char* str, size_t* used_len) {
     shrinkage_ = 1.0f;
   }
   max_depth_ = -1;
+
+  /*!
+   * Xixuan: record added bias
+   */
+  bias_ = 0.0;
+
 }
 
 void Tree::ExtendPath(PathElement *unique_path, int unique_depth,

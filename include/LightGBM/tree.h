@@ -157,6 +157,11 @@ public:
     }
     // force to 1.0
     shrinkage_ = 1.0f;
+
+    /*!
+     * Xixuan: record added bias
+     */
+    bias_ += val;
   }
 
   inline void AsConstantTree(double val) {
@@ -204,6 +209,13 @@ public:
   }
 
   void RecomputeMaxDepth();
+
+  /*!
+   * Xixuan: return added bias
+   */
+   inline double bias() {
+     return bias_;
+   }
 
 private:
 
@@ -391,6 +403,11 @@ private:
   std::vector<int> leaf_depth_;
   double shrinkage_;
   int max_depth_;
+
+  /*!
+   * Xixuan: record added bias
+   */
+   double bias_;
 };
 
 inline void Tree::Split(int leaf, int feature, int real_feature,

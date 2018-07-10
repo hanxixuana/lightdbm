@@ -250,20 +250,28 @@ public:
 struct BoostingConfig: public ConfigBase {
 public:
   virtual ~BoostingConfig() {}
+
+  /*!
+   * ===============================================
+   * Xixuan: evenly dropout additive regression tree
+   * ===============================================
+   */
+  int num_tree_per_forest = 1;
+
   int output_freq = 1;
   bool is_provide_training_metric = false;
   int num_iterations = 100;
   double learning_rate = 0.1f;
-  double bagging_fraction = 1.0f;
+  double bagging_fraction = 1.0f;           // Xixuan: it is used by boostingforest
   int bagging_seed = 3;
   int bagging_freq = 0;
   int early_stopping_round = 0;
   int num_class = 1;
-  double drop_rate = 0.1;
+  double drop_rate = 0.1;                   // Xixuan: it is used by boostingforest
   int max_drop = 50;
   double skip_drop = 0.5;
   bool xgboost_dart_mode = false;
-  bool uniform_drop = false;
+  bool uniform_drop = false;                // Xixuan: it is used by boostingforest
   int drop_seed = 4;
   double top_rate = 0.2f;
   double other_rate = 0.1f;

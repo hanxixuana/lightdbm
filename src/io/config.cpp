@@ -54,6 +54,17 @@ void GetBoostingType(const std::unordered_map<std::string, std::string>& params,
       *boosting_type = "goss";
     } else if (value == std::string("rf") || value == std::string("randomforest")) {
       *boosting_type = "rf";
+
+    /*!
+     * ===================================================================
+     * Xixuan: evenly dropout additive regression tree
+     * ===================================================================
+     */
+
+    } else if (value == std::string("boostingforest")) {
+      *boosting_type = "boostingforest";
+
+
     } else {
       Log::Fatal("Unknown boosting type %s", value.c_str());
     }
@@ -460,6 +471,15 @@ void TreeConfig::Set(const std::unordered_map<std::string, std::string>& params)
 }
 
 void BoostingConfig::Set(const std::unordered_map<std::string, std::string>& params) {
+
+  /*!
+   * ===============================================
+   * Xixuan: evenly dropout additive regression tree
+   * ===============================================
+   */
+  GetInt(params, "num_tree_per_forest", &num_tree_per_forest);
+  CHECK(num_tree_per_forest >= 0);
+
   GetInt(params, "num_iterations", &num_iterations);
   CHECK(num_iterations >= 0);
   GetInt(params, "bagging_seed", &bagging_seed);
